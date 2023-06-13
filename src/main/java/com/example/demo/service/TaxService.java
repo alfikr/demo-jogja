@@ -10,6 +10,7 @@ import com.example.demo.utils.JsonValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import javax.validation.ConstraintViolation;
 import java.util.*;
@@ -24,30 +25,32 @@ public class TaxService {
         this.taxCalculatorFactory = taxCalculatorFactory;
     }
 
-    public SimpleResponse hitungPajak(JsonNode param) {
+    public Mono<SimpleResponse> hitungPajak(JsonNode param) {
         JsonNode employee = param.get("employee");
         Set<ConstraintViolation> violationSet = JsonValidator.validateParam(employee, "marital status", "country");
         if (!violationSet.isEmpty()) {
-            return new SimpleResponse(GenericConstants.FAILED, GenericConstants.FAILED_CODE, violationSet.iterator().next().getMessage());
+            return Mono.error(()->new IllegalArgumentException(violationSet.iterator().next().getMessage()));
         }
-        JsonNode komponengaji = param.get("komponengaji");
-        Double income = 0D;
-        Double outcome = 0D;
-        for (JsonNode n : komponengaji) {
-            if (n.get("type").asText().equalsIgnoreCase("earning")) {
-                income += n.get("amount").asDouble();
-            } else if (n.get("type").asText().equalsIgnoreCase("deduction")) {
-                outcome += n.get("amount").asDouble();
+        return Mono.fromCallable(()->{
+            JsonNode komponengaji = param.get("komponengaji");
+            Double income = 0D;
+            Double outcome = 0D;
+            for (JsonNode n : komponengaji) {
+                if (n.get("type").asText().equalsIgnoreCase("earning")) {
+                    income += n.get("amount").asDouble();
+                } else if (n.get("type").asText().equalsIgnoreCase("deduction")) {
+                    outcome += n.get("amount").asDouble();
+                }
             }
-        }
-        Map<String, Object> result = new HashMap<>();
-        String country = employee.get("country").asText();
-        TaxCalculator taxCalculator = taxCalculatorFactory.createTaxCalculator(country,income,outcome,employee);
-        result.put("monthlyTax", taxCalculator.getMonthlyTax());
-        result.put("yearlyIncomeNetto", taxCalculator.getYearlyNetIncome());
-        result.put("yearlyTax", taxCalculator.getYearlyTax());
+            Map<String, Object> result = new HashMap<>();
+            String country = employee.get("country").asText();
+            TaxCalculator taxCalculator = taxCalculatorFactory.createTaxCalculator(country,income,outcome,employee);
+            result.put("monthlyTax", taxCalculator.getMonthlyTax());
+            result.put("yearlyIncomeNetto", taxCalculator.getYearlyNetIncome());
+            result.put("yearlyTax", taxCalculator.getYearlyTax());
 
-        return new SimpleResponse(GenericConstants.SUCCESS, GenericConstants.SUCCESS_CODE, result);
+            return new SimpleResponse(GenericConstants.SUCCESS, GenericConstants.SUCCESS_CODE, result);
+        });
     }
 
 }
