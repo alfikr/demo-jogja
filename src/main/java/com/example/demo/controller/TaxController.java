@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.example.demo.models.SimpleResponse;
 import com.fasterxml.jackson.databind.JsonNode;
+import reactor.core.publisher.Mono;
 
 
 @RestController
@@ -16,7 +17,7 @@ public class TaxController {
     private TaxService taxService;
     
     @PostMapping("/hitungpajak")
-    public SimpleResponse hitungPajak(@RequestBody JsonNode param){
+    public Mono<SimpleResponse> hitungPajak(@RequestBody JsonNode param){
         return taxService.hitungPajak(param);
     }
 }
